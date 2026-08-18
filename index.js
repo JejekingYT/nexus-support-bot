@@ -103,4 +103,17 @@ client.on("messageCreate", async (message) => {
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+console.log("🚀 Starting Sanctuary Assistant...");
+console.log(
+    "🔐 Token loaded:",
+    process.env.DISCORD_TOKEN ? "YES" : "NO"
+);
+
+client.login(process.env.DISCORD_TOKEN)
+    .then(() => {
+        console.log("🔑 Login request sent to Discord.");
+    })
+    .catch((error) => {
+        console.error("❌ Discord login failed:");
+        console.error(error);
+    });
