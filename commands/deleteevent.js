@@ -3,9 +3,16 @@ const {
 } = require("discord.js");
 
 const {
-    getEvents,
-    saveEvents
+    getEvents
 } = require("./addevent");
+
+const {
+    pool
+} = require("../database");
+
+// =========================
+// DELETE EVENT
+// =========================
 
 async function deleteEvent(interaction) {
 
@@ -32,22 +39,35 @@ async function deleteEvent(interaction) {
         // =========================
 
         const eventId =
-            interaction.options.getString("id");
+            interaction.options.getString("event");
 
-        const events = getEvents();
+        if (!eventId) {
+            return interaction.reply({
+                content:
+                    "❌ Please select an event to delete.",
+                ephemeral: true
+            });
+        }
+
+        // =========================
+        // GET EVENTS FROM MYSQL
+        // =========================
+
+        const events =
+            await getEvents();
 
         // =========================
         // FIND EVENT
         // =========================
 
-        const eventIndex =
-            events.findIndex(
+        const event =
+            events.find(
                 event =>
-                    event.id.toString().toLowerCase() ===
-                    eventId.toLowerCase()
+                    String(event.id).toLowerCase() ===
+                    String(eventId).toLowerCase()
             );
 
-        if (eventIndex === -1) {
+        if (!event) {
             return interaction.reply({
                 content:
                     `❌ Event **${eventId}** could not be found.`,
@@ -56,28 +76,16 @@ async function deleteEvent(interaction) {
         }
 
         // =========================
-        // REMOVE EVENT
+        // DELETE FROM MYSQL
         // =========================
 
-        const deletedEvent =
-            events[eventIndex];
-
-        events.splice(
-            eventIndex,
-            1
+        await pool.execute(
+            `
+            DELETE FROM events
+            WHERE id = ?
+            `,
+            [event.id]
         );
-
-        // =========================
-        // SAVE
-        // =========================
-
-        if (!saveEvents(events)) {
-            return interaction.reply({
-                content:
-                    "❌ Something went wrong while deleting the event.",
-                ephemeral: true
-            });
-        }
 
         // =========================
         // SUCCESS
@@ -86,10 +94,10 @@ async function deleteEvent(interaction) {
         await interaction.reply({
             content:
                 "🗑️ **Event deleted successfully!**\n\n" +
-                `🆔 **${deletedEvent.id}**\n` +
-                `🎉 **${deletedEvent.name}**\n` +
-                `📅 ${deletedEvent.date}\n` +
-                `🕐 ${deletedEvent.time}`,
+                `🆔 **${event.id}**\n` +
+                `🎉 **${event.name}**\n` +
+                `📅 ${event.date}\n` +
+                `🕐 ${event.time}`,
             ephemeral: true
         });
 
@@ -100,13 +108,27 @@ async function deleteEvent(interaction) {
             error
         );
 
-        if (!interaction.replied) {
-            await interaction.reply({
-                content:
-                    "❌ Something went wrong while deleting the event.",
-                ephemeral: true
-            });
-        }
+        try {
+
+            if (interaction.replied) {
+
+                await interaction.followUp({
+                    content:
+                        "❌ Something went wrong while deleting the event.",
+                    ephemeral: true
+                });
+
+            } else {
+
+                await interaction.reply({
+                    content:
+                        "❌ Something went wrong while deleting the event.",
+                    ephemeral: true
+                });
+
+            }
+
+        } catch {}
     }
 }
 
