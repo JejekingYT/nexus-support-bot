@@ -1,5 +1,9 @@
-const { EmbedBuilder } = require("discord.js");
 const { getEvents } = require("./addevent");
+
+const {
+    sanctuaryEmbed,
+    errorEmbed
+} = require("../utils/embeds");
 
 async function showSchedule(interaction) {
     try {
@@ -14,21 +18,31 @@ async function showSchedule(interaction) {
         // CREATE EMBED
         // =========================
 
-        const embed = new EmbedBuilder()
+        const embed = sanctuaryEmbed()
             .setTitle("📅 Sanctuary Schedule")
             .setDescription(
-                "Here you can find upcoming Sanctuary clan activities."
-            )
-            .addFields(
-                {
-                    name: "🎓 Trainings",
-                    value: "No trainings scheduled."
-                },
-                {
-                    name: "⚔️ Raids",
-                    value: "No raids scheduled."
-                }
+                "Everything happening within The Sanctuary."
             );
+
+        // =========================
+        // TRAININGS
+        // =========================
+
+        embed.addFields({
+            name: "🎓 Trainings",
+            value:
+                "There are currently no trainings scheduled."
+        });
+
+        // =========================
+        // RAIDS
+        // =========================
+
+        embed.addFields({
+            name: "⚔️ Raids",
+            value:
+                "There are currently no raids scheduled."
+        });
 
         // =========================
         // EVENTS
@@ -38,16 +52,19 @@ async function showSchedule(interaction) {
 
             embed.addFields({
                 name: "🎉 Events",
-                value: "No events scheduled."
+                value:
+                    "There are no events scheduled at the moment."
             });
 
         } else {
 
             const eventList = events
                 .map(event =>
-                    `🎉 **${event.name}**\n` +
-                    `📅 ${event.date} at ${event.time}\n` +
-                    `📍 ${event.location}`
+                    `> 🎉 **${event.name}**\n` +
+                    `> 🆔 ${event.id}\n` +
+                    `📅 **Date:** ${event.date}\n` +
+                    `🕐 **Time:** ${event.time}\n` +
+                    `📍 **Location:** ${event.location}`
                 )
                 .join("\n\n");
 
@@ -68,15 +85,7 @@ async function showSchedule(interaction) {
         });
 
         // =========================
-        // FOOTER
-        // =========================
-
-        embed.setFooter({
-            text: "The Sanctuary made by Nexus"
-        });
-
-        // =========================
-        // SEND
+        // SEND RESPONSE
         // =========================
 
         await interaction.reply({
@@ -90,21 +99,25 @@ async function showSchedule(interaction) {
             error
         );
 
+        const errorEmbedMessage = errorEmbed(
+            "Unable to Load Schedule",
+            "Something went wrong while loading the Sanctuary schedule.\n\n" +
+            "Please try again later."
+        );
+
         try {
 
             if (interaction.replied) {
 
                 await interaction.followUp({
-                    content:
-                        "❌ Something went wrong while loading the schedule.",
+                    embeds: [errorEmbedMessage],
                     ephemeral: true
                 });
 
             } else {
 
                 await interaction.reply({
-                    content:
-                        "❌ Something went wrong while loading the schedule.",
+                    embeds: [errorEmbedMessage],
                     ephemeral: true
                 });
 

@@ -17,14 +17,13 @@ async function getNextReportNumber() {
     const connection = await pool.getConnection();
 
     try {
-        // Make sure the counter exists
+
         await connection.query(`
             INSERT IGNORE INTO report_counter
             (id, lastReport)
             VALUES (1, 0)
         `);
 
-        // Atomically increase the counter
         await connection.query(`
             UPDATE report_counter
             SET lastReport = LAST_INSERT_ID(lastReport + 1)
@@ -45,7 +44,7 @@ async function getNextReportNumber() {
 }
 
 // =========================
-// /report
+// /REPORT
 // =========================
 
 async function createReport(interaction) {
@@ -139,22 +138,17 @@ async function createReport(interaction) {
             interaction.user.displayName ||
             interaction.user.username;
 
-        const reportedMemberText =
-            `**${reportedMember.displayName}**\n` +
-            `<@${reportedMember.id}>\n` +
-            `@${reportedMember.user.username}`;
-
         // =========================
-        // EMBED
+        // REPORT EMBED
         // =========================
 
         const reportEmbed =
             new EmbedBuilder()
                 .setTitle(
-                    `🚨 ${reportId} — New Member Report`
+                    `🚨 ${reportId} — Member Report`
                 )
                 .setDescription(
-                    `A new report has been submitted by **${reporterName}**.`
+                    "A new member report has been submitted and requires staff attention."
                 )
                 .addFields(
                     {
@@ -162,25 +156,39 @@ async function createReport(interaction) {
                         value:
                             `**${reporterName}**\n` +
                             `<@${interaction.user.id}>\n` +
-                            `@${interaction.user.username}`
+                            `\`${interaction.user.username}\``,
+                        inline: true
                     },
                     {
                         name: "🎯 Reported Member",
-                        value: reportedMemberText
+                        value:
+                            `**${reportedMember.displayName}**\n` +
+                            `<@${reportedMember.id}>\n` +
+                            `\`${reportedMember.user.username}\``,
+                        inline: true
                     },
                     {
                         name: "🚨 Priority",
-                        value: priorityText
+                        value:
+                            priorityText,
+                        inline: true
                     },
                     {
-                        name: "📝 Reason",
-                        value: reason
+                        name: "📝 Report Reason",
+                        value:
+                            reason
                     },
                     {
                         name: "📌 Status",
-                        value: "🟡 Unclaimed"
+                        value:
+                            "🟡 **Unclaimed**\n" +
+                            "Waiting for a staff member to review this report.",
+                        inline: false
                     }
                 )
+                .setFooter({
+                    text: "The Sanctuary made by Nexus"
+                })
                 .setTimestamp();
 
         // =========================
@@ -199,7 +207,7 @@ async function createReport(interaction) {
                             "Claim Report"
                         )
                         .setStyle(
-                            ButtonStyle.Primary
+                            ButtonStyle.Success
                         )
                         .setEmoji("🟢"),
 
@@ -226,15 +234,16 @@ async function createReport(interaction) {
         });
 
         // =========================
-        // SUCCESS
+        // USER CONFIRMATION
         // =========================
 
         await interaction.reply({
             content:
                 "✅ **Report submitted successfully!**\n\n" +
-                `📋 Report ID: **${reportId}**\n` +
-                `🎯 Reported: <@${reportedMember.id}>\n` +
-                `🚨 Priority: **${priorityText}**`,
+                `📋 **Report ID:** ${reportId}\n` +
+                `🎯 **Reported:** <@${reportedMember.id}>\n` +
+                `🚨 **Priority:** ${priorityText}\n\n` +
+                "Staff will review your report as soon as possible.",
             ephemeral: true
         });
 
@@ -298,7 +307,9 @@ async function claimReport(interaction) {
 
     if (
         statusField &&
-        statusField.value !== "🟡 Unclaimed"
+        !statusField.value.startsWith(
+            "🟡 **Unclaimed**"
+        )
     ) {
 
         return interaction.reply({
@@ -306,7 +317,6 @@ async function claimReport(interaction) {
                 "❌ This report has already been claimed or closed.",
             ephemeral: true
         });
-
     }
 
     const staffName =
@@ -324,7 +334,8 @@ async function claimReport(interaction) {
                 return {
                     name: "📌 Status",
                     value:
-                        `🟢 Claimed by **${staffName}**\n` +
+                        `🟢 **Claimed**\n` +
+                        `Handled by **${staffName}**\n` +
                         `<@${interaction.user.id}>`
                 };
 
@@ -341,7 +352,7 @@ async function claimReport(interaction) {
 
     await interaction.reply({
         content:
-            "🟢 You have claimed this report.",
+            "🟢 **Report claimed successfully.**\nYou are now handling this report.",
         ephemeral: true
     });
 }
@@ -382,7 +393,8 @@ async function closeReport(interaction) {
                 return {
                     name: "📌 Status",
                     value:
-                        `🔴 Closed by **${staffName}**\n` +
+                        `🔴 **Closed**\n` +
+                        `Closed by **${staffName}**\n` +
                         `<@${interaction.user.id}>`
                 };
 
@@ -400,7 +412,7 @@ async function closeReport(interaction) {
 
     await interaction.reply({
         content:
-            "🔴 Report closed.",
+            "🔴 **Report closed successfully.**",
         ephemeral: true
     });
 }
