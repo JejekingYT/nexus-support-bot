@@ -345,7 +345,7 @@ client.on(
 
                 try {
 
-                    const events = getEvents();
+                    const events = await getEvents();
 
                     const search =
                         interaction.options
