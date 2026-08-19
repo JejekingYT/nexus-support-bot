@@ -56,6 +56,33 @@ function saveEvents(events) {
     }
 }
 
+function getNextEventId(events) {
+    let highestNumber = 0;
+
+    for (const event of events) {
+        if (
+            typeof event.id === "string" &&
+            event.id.startsWith("EVENT-")
+        ) {
+            const number = parseInt(
+                event.id.replace("EVENT-", ""),
+                10
+            );
+
+            if (!isNaN(number)) {
+                highestNumber = Math.max(
+                    highestNumber,
+                    number
+                );
+            }
+        }
+    }
+
+    return `EVENT-${String(
+        highestNumber + 1
+    ).padStart(3, "0")}`;
+}
+
 async function addEvent(interaction) {
 
     // =========================
@@ -108,7 +135,7 @@ async function addEvent(interaction) {
         // =========================
 
         const event = {
-            id: Date.now(),
+            id: getNextEventId(events),
             name: eventName,
             date: eventDate,
             time: eventTime,
@@ -139,6 +166,7 @@ async function addEvent(interaction) {
         await interaction.reply({
             content:
                 "✅ **Event created successfully!**\n\n" +
+                `🆔 **${event.id}**\n` +
                 `🎉 **${event.name}**\n` +
                 `📅 ${event.date}\n` +
                 `🕐 ${event.time}\n` +
@@ -180,5 +208,6 @@ async function addEvent(interaction) {
 
 module.exports = {
     addEvent,
-    getEvents
+    getEvents,
+    saveEvents
 };

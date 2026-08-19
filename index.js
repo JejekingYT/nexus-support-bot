@@ -37,6 +37,10 @@ const {
     addEvent
 } = require("./commands/addevent");
 
+const {
+    deleteEvent
+} = require("./commands/deleteevent");
+
 // =========================
 // ENVIRONMENT VARIABLES
 // =========================
@@ -209,8 +213,25 @@ const commands = [
                     "Description of the event"
                 )
                 .setRequired(true)
-        )
-        .setDefaultMemberPermissions("8")
+        ),
+
+        // /deleteevent
+new SlashCommandBuilder()
+    .setName("deleteevent")
+    .setDescription(
+        "Delete an existing Sanctuary event"
+    )
+    .addStringOption(option =>
+        option
+            .setName("id")
+            .setDescription(
+                "The event ID, for example EVENT-001"
+            )
+            .setRequired(true)
+    )
+
+    .setDefaultMemberPermissions("8"),
+        
 
 ].map(command => command.toJSON());
 
@@ -416,6 +437,15 @@ client.on(
                     interaction.commandName === "addevent"
                 ) {
                     return addEvent(
+                        interaction
+                    );
+                }
+
+                // /deleteevent
+                if (
+                    interaction.commandName === "deleteevent"
+                ) {
+                    return deleteEvent(
                         interaction
                     );
                 }
