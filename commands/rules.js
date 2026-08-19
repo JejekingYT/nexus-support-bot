@@ -14,7 +14,7 @@ const rules = {
         punishment: "Warning → Timeout → Kick."
     },
     4: {
-        rule: "Listen to clan leaders during events, trainings, and raids.",
+        rule: "Listen to clan leaders and respect their orders to stop.",
         punishment: "Warning → Removed from the event."
     },
     5: {
