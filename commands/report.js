@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 const {
     ActionRowBuilder,
     ButtonBuilder,
@@ -6,6 +9,42 @@ const {
 } = require("discord.js");
 
 const REPORT_CHANNEL_ID = "1539597296486850610";
+
+const COUNTER_FILE = path.join(
+    __dirname,
+    "..",
+    "data",
+    "report-counter.json"
+);
+
+function getNextReportNumber() {
+    let data = {
+        lastReport: 0
+    };
+
+    try {
+        if (fs.existsSync(COUNTER_FILE)) {
+            data = JSON.parse(
+                fs.readFileSync(COUNTER_FILE, "utf8")
+            );
+        }
+    } catch (error) {
+        console.error("Could not read report counter:", error);
+    }
+
+    data.lastReport++;
+
+    try {
+        fs.writeFileSync(
+            COUNTER_FILE,
+            JSON.stringify(data, null, 2)
+        );
+    } catch (error) {
+        console.error("Could not save report counter:", error);
+    }
+
+    return `REPORT-${String(data.lastReport).padStart(3, "0")}`;
+}
 
 async function showReport(message) {
     const button = new ButtonBuilder()
@@ -58,7 +97,7 @@ async function startReport(interaction) {
         const dm = await interaction.user.createDM();
 
         await dm.send(
-            "🚨 **Nexus Report System**\n\n" +
+            "🚨 **Sanctuary Report System**\n\n" +
             "Please answer the following questions honestly.\n" +
             "You have **5 minutes** to answer each question."
         );
@@ -151,6 +190,8 @@ async function startReport(interaction) {
 
         if (!evidence) return;
 
+        const reportId = getNextReportNumber();
+
         const reportChannel =
             await interaction.client.channels.fetch(REPORT_CHANNEL_ID);
 
@@ -166,7 +207,7 @@ async function startReport(interaction) {
             interaction.user.username;
 
         const reportEmbed = new EmbedBuilder()
-            .setTitle("🚨 New Member Report")
+            .setTitle(`🚨 ${reportId} — New Member Report`)
             .setDescription(
                 `A new report has been submitted by **${reporterName}**.`
             )
@@ -221,7 +262,7 @@ async function startReport(interaction) {
 
         await dm.send(
             "✅ **Your report has been submitted successfully.**\n\n" +
-            "The Nexus staff team will review it."
+            "The Sanctuary staff team will review it."
         );
 
     } catch (error) {
