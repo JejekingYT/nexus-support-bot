@@ -26,6 +26,11 @@ const {
     showEvents
 } = require("./commands/events");
 
+const {
+    showReport,
+    startReport
+} = require("./commands/report");
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -109,6 +114,19 @@ client.on("messageCreate", async (message) => {
     // ;events
     if (command === "events") {
         return showEvents(message);
+    }
+
+    // ;report
+    if (command === "report") {
+        return showReport(message);
+    }
+});
+
+client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === "start_report") {
+        await startReport(interaction);
     }
 });
 
