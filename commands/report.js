@@ -106,7 +106,7 @@ async function startReport(interaction) {
         const reportedUserAnswer = await askQuestion(
             dm,
             interaction.user.id,
-            "👤 **Question 1/4:** Who are you reporting?\n" +
+            "👤 **Question 1/5:** Who are you reporting?\n" +
             "Please enter their exact Discord username.\n\n" +
             "Example: `Username123`"
         );
@@ -125,7 +125,6 @@ async function startReport(interaction) {
                     limit: 10
                 });
 
-                // If fetch returns a collection, get the first result
                 if (reportedMember && reportedMember.size > 0) {
                     reportedMember = reportedMember.first();
                 } else {
@@ -135,7 +134,6 @@ async function startReport(interaction) {
                 reportedMember = null;
             }
 
-            // Try exact username/display name match
             if (!reportedMember) {
                 const members = await guild.members.fetch();
 
@@ -165,7 +163,7 @@ async function startReport(interaction) {
         const whatHappened = await askQuestion(
             dm,
             interaction.user.id,
-            "📝 **Question 2/4:** What happened?\n" +
+            "📝 **Question 2/5:** What happened?\n" +
             "Please explain the situation."
         );
 
@@ -175,7 +173,7 @@ async function startReport(interaction) {
         const when = await askQuestion(
             dm,
             interaction.user.id,
-            "📅 **Question 3/4:** When did this happen?"
+            "📅 **Question 3/5:** When did this happen?"
         );
 
         if (!when) return;
@@ -184,11 +182,34 @@ async function startReport(interaction) {
         const evidence = await askQuestion(
             dm,
             interaction.user.id,
-            "📸 **Question 4/4:** Do you have any evidence?\n" +
+            "📸 **Question 4/5:** Do you have any evidence?\n" +
             "Send links/screenshots or type `No evidence`."
         );
 
         if (!evidence) return;
+
+        // Question 5 - Priority
+        const priority = await askQuestion(
+            dm,
+            interaction.user.id,
+            "🚨 **Question 5/5:** What is the priority of this report?\n\n" +
+            "Reply with one of the following:\n\n" +
+            "🟢 `Low` — Minor issue\n" +
+            "🟡 `Normal` — Standard report\n" +
+            "🔴 `High` — Serious or urgent issue"
+        );
+
+        if (!priority) return;
+
+        let priorityText = priority.content.trim().toLowerCase();
+
+        if (priorityText === "low") {
+            priorityText = "🟢 Low";
+        } else if (priorityText === "high") {
+            priorityText = "🔴 High";
+        } else {
+            priorityText = "🟡 Normal";
+        }
 
         const reportId = getNextReportNumber();
 
@@ -221,6 +242,10 @@ async function startReport(interaction) {
                 {
                     name: "🎯 Reported Member",
                     value: reportedMemberText
+                },
+                {
+                    name: "🚨 Priority",
+                    value: priorityText
                 },
                 {
                     name: "📝 What Happened",
@@ -262,6 +287,8 @@ async function startReport(interaction) {
 
         await dm.send(
             "✅ **Your report has been submitted successfully.**\n\n" +
+            `📋 Report ID: **${reportId}**\n` +
+            `🚨 Priority: **${priorityText}**\n\n` +
             "The Sanctuary staff team will review it."
         );
 
