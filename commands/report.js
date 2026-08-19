@@ -46,162 +46,47 @@ function getNextReportNumber() {
     return `REPORT-${String(data.lastReport).padStart(3, "0")}`;
 }
 
-async function showReport(message) {
-    const button = new ButtonBuilder()
-        .setCustomId("start_report")
-        .setLabel("Create Report")
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji("🚨");
-
-    const row = new ActionRowBuilder().addComponents(button);
-
-    await message.reply({
-        content:
-            "🚨 **Report a Member**\n\n" +
-            "Click the button below to start a private report.\n" +
-            "The bot will ask you questions in your DMs.",
-        components: [row]
-    });
-}
-
-async function askQuestion(dm, userId, question) {
-    await dm.send(question);
-
+// /report
+async function createReport(interaction) {
     try {
-        const collected = await dm.awaitMessages({
-            filter: (msg) =>
-                msg.author.id === userId && !msg.author.bot,
-            max: 1,
-            time: 300000,
-            errors: ["time"]
-        });
+        const reportedMember =
+            interaction.options.getMember("user");
 
-        return collected.first();
-    } catch {
-        await dm.send(
-            "⌛ Your report timed out because no answer was received."
-        );
+        const reason =
+            interaction.options.getString("reason");
 
-        return null;
-    }
-}
+        const priority =
+            interaction.options.getString("priority") || "normal";
 
-async function startReport(interaction) {
-    try {
-        await interaction.reply({
-            content:
-                "📩 Check your DMs! The report questions have been sent to you.",
-            ephemeral: true
-        });
-
-        const dm = await interaction.user.createDM();
-
-        await dm.send(
-            "🚨 **Sanctuary Report System**\n\n" +
-            "Please answer the following questions honestly.\n" +
-            "You have **5 minutes** to answer each question."
-        );
-
-        // Question 1
-        const reportedUserAnswer = await askQuestion(
-            dm,
-            interaction.user.id,
-            "👤 **Question 1/5:** Who are you reporting?\n" +
-            "Please enter their exact Discord username or display name.\n\n" +
-            "Example: `Username123`"
-        );
-
-        if (!reportedUserAnswer) return;
-
-        // Find the reported member using ONLY exact matches
-        const guild = interaction.guild;
-
-        let reportedMember = null;
-
-        if (guild) {
-            try {
-                const searchName =
-                    reportedUserAnswer.content.trim().toLowerCase();
-
-                // Fetch all members and look for an exact username/display name.
-                // This prevents partial searches like "s" from selecting
-                // the first member whose name starts with "s".
-                const members = await guild.members.fetch();
-
-                reportedMember = members.find(
-                    (member) =>
-                        member.user.username.toLowerCase() === searchName ||
-                        member.displayName.toLowerCase() === searchName
-                );
-            } catch (error) {
-                console.error(
-                    "Could not search for reported member:",
-                    error
-                );
-
-                reportedMember = null;
-            }
+        if (!reportedMember) {
+            return interaction.reply({
+                content:
+                    "❌ I could not find that member in this server.",
+                ephemeral: true
+            });
         }
 
-        let reportedMemberText;
-
-        if (reportedMember) {
-            reportedMemberText =
-                `**${reportedMember.displayName}**\n` +
-                `@${reportedMember.user.username}`;
-        } else {
-            reportedMemberText =
-                `**${reportedUserAnswer.content}**\n` +
-                `⚠️ Member could not be found in this server.`;
+        if (reportedMember.user.bot) {
+            return interaction.reply({
+                content:
+                    "❌ You cannot report a bot.",
+                ephemeral: true
+            });
         }
 
-        // Question 2
-        const whatHappened = await askQuestion(
-            dm,
-            interaction.user.id,
-            "📝 **Question 2/5:** What happened?\n" +
-            "Please explain the situation."
-        );
+        if (reportedMember.id === interaction.user.id) {
+            return interaction.reply({
+                content:
+                    "❌ You cannot report yourself.",
+                ephemeral: true
+            });
+        }
 
-        if (!whatHappened) return;
+        let priorityText;
 
-        // Question 3
-        const when = await askQuestion(
-            dm,
-            interaction.user.id,
-            "📅 **Question 3/5:** When did this happen?"
-        );
-
-        if (!when) return;
-
-        // Question 4
-        const evidence = await askQuestion(
-            dm,
-            interaction.user.id,
-            "📸 **Question 4/5:** Do you have any evidence?\n" +
-            "Send links/screenshots or type `No evidence`."
-        );
-
-        if (!evidence) return;
-
-        // Question 5 - Priority
-        const priority = await askQuestion(
-            dm,
-            interaction.user.id,
-            "🚨 **Question 5/5:** What is the priority of this report?\n\n" +
-            "Reply with one of the following:\n\n" +
-            "🟢 `Low` — Minor issue\n" +
-            "🟡 `Normal` — Standard report\n" +
-            "🔴 `High` — Serious or urgent issue"
-        );
-
-        if (!priority) return;
-
-        let priorityText = priority.content.trim().toLowerCase();
-
-        if (priorityText === "low") {
+        if (priority === "low") {
             priorityText = "🟢 Low";
-        } else if (priorityText === "high") {
+        } else if (priority === "high") {
             priorityText = "🔴 High";
         } else {
             priorityText = "🟡 Normal";
@@ -210,18 +95,27 @@ async function startReport(interaction) {
         const reportId = getNextReportNumber();
 
         const reportChannel =
-            await interaction.client.channels.fetch(REPORT_CHANNEL_ID);
+            await interaction.client.channels.fetch(
+                REPORT_CHANNEL_ID
+            );
 
         if (!reportChannel || !reportChannel.isTextBased()) {
-            return dm.send(
-                "❌ The reports channel could not be found."
-            );
+            return interaction.reply({
+                content:
+                    "❌ The reports channel could not be found.",
+                ephemeral: true
+            });
         }
 
         const reporterName =
             interaction.member?.displayName ||
             interaction.user.displayName ||
             interaction.user.username;
+
+        const reportedMemberText =
+            `**${reportedMember.displayName}**\n` +
+            `<@${reportedMember.id}>\n` +
+            `@${reportedMember.user.username}`;
 
         const reportEmbed = new EmbedBuilder()
             .setTitle(`🚨 ${reportId} — New Member Report`)
@@ -233,6 +127,7 @@ async function startReport(interaction) {
                     name: "👤 Reporter",
                     value:
                         `**${reporterName}**\n` +
+                        `<@${interaction.user.id}>\n` +
                         `@${interaction.user.username}`
                 },
                 {
@@ -244,16 +139,8 @@ async function startReport(interaction) {
                     value: priorityText
                 },
                 {
-                    name: "📝 What Happened",
-                    value: whatHappened.content
-                },
-                {
-                    name: "📅 When",
-                    value: when.content
-                },
-                {
-                    name: "📸 Evidence",
-                    value: evidence.content
+                    name: "📝 Reason",
+                    value: reason
                 },
                 {
                     name: "📌 Status",
@@ -281,22 +168,32 @@ async function startReport(interaction) {
             components: [buttons]
         });
 
-        await dm.send(
-            "✅ **Your report has been submitted successfully.**\n\n" +
-            `📋 Report ID: **${reportId}**\n` +
-            `🚨 Priority: **${priorityText}**\n\n` +
-            "The Sanctuary staff team will review it."
-        );
+        await interaction.reply({
+            content:
+                "✅ **Report submitted successfully!**\n\n" +
+                `📋 Report ID: **${reportId}**\n` +
+                `🎯 Reported: <@${reportedMember.id}>\n` +
+                `🚨 Priority: **${priorityText}**`,
+            ephemeral: true
+        });
 
     } catch (error) {
         console.error("Report error:", error);
 
         try {
-            await interaction.followUp({
-                content:
-                    "❌ Something went wrong. Please make sure your DMs are open.",
-                ephemeral: true
-            });
+            if (interaction.replied) {
+                await interaction.followUp({
+                    content:
+                        "❌ Something went wrong while submitting the report.",
+                    ephemeral: true
+                });
+            } else {
+                await interaction.reply({
+                    content:
+                        "❌ Something went wrong while submitting the report.",
+                    ephemeral: true
+                });
+            }
         } catch {}
     }
 }
@@ -315,7 +212,8 @@ async function claimReport(interaction) {
 
     if (statusField && statusField.value !== "🟡 Unclaimed") {
         return interaction.reply({
-            content: "❌ This report has already been claimed.",
+            content:
+                "❌ This report has already been claimed or closed.",
             ephemeral: true
         });
     }
@@ -329,7 +227,7 @@ async function claimReport(interaction) {
         if (field.name === "📌 Status") {
             return {
                 name: "📌 Status",
-                value: `🟢 Claimed by **${staffName}**`
+                value: `🟢 Claimed by **${staffName}**\n<@${interaction.user.id}>`
             };
         }
 
@@ -365,7 +263,7 @@ async function closeReport(interaction) {
         if (field.name === "📌 Status") {
             return {
                 name: "📌 Status",
-                value: `🔴 Closed by **${staffName}**`
+                value: `🔴 Closed by **${staffName}**\n<@${interaction.user.id}>`
             };
         }
 
@@ -386,8 +284,7 @@ async function closeReport(interaction) {
 }
 
 module.exports = {
-    showReport,
-    startReport,
+    createReport,
     claimReport,
     closeReport
 };

@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 
-async function showRequirements(message) {
+async function showRequirements(interaction) {
     const embed = new EmbedBuilder()
         .setTitle("📋 Sanctuary Requirements")
         .setDescription(
@@ -26,7 +26,9 @@ async function showRequirements(message) {
             text: "The Sanctuary made by Nexus"
         });
 
-    await message.reply({ embeds: [embed] });
+    await interaction.reply({
+        embeds: [embed]
+    });
 }
 
 module.exports = {

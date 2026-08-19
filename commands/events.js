@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 
-async function showEvents(message) {
+async function showEvents(interaction) {
     const embed = new EmbedBuilder()
         .setTitle("🎉 Sanctuary Events")
         .setDescription(
@@ -32,7 +32,9 @@ async function showEvents(message) {
             text: "The Sanctuary made by Nexus"
         });
 
-    await message.reply({ embeds: [embed] });
+    await interaction.reply({
+        embeds: [embed]
+    });
 }
 
 module.exports = {

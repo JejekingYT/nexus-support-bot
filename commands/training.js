@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 
-async function showTraining(message) {
+async function showTraining(interaction) {
     const embed = new EmbedBuilder()
         .setTitle("🎓 Sanctuary Training")
         .setDescription(
@@ -32,7 +32,9 @@ async function showTraining(message) {
             text: "The Sanctuary made by Nexus"
         });
 
-    await message.reply({ embeds: [embed] });
+    await interaction.reply({
+        embeds: [embed]
+    });
 }
 
 module.exports = {

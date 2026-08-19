@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 
-async function showSchedule(message) {
+async function showSchedule(interaction) {
     const embed = new EmbedBuilder()
         .setTitle("📅 Sanctuary Schedule")
         .setDescription(
@@ -21,14 +21,17 @@ async function showSchedule(message) {
             },
             {
                 name: "📢 Announcements",
-                value: "All upcoming activities will be announced in the appropriate channels."
+                value:
+                    "All upcoming activities will be announced in the appropriate channels."
             }
         )
         .setFooter({
             text: "The Sanctuary made by Nexus"
         });
 
-    await message.reply({ embeds: [embed] });
+    await interaction.reply({
+        embeds: [embed]
+    });
 }
 
 module.exports = {

@@ -15,7 +15,7 @@ const rules = {
     },
     4: {
         rule: "Listen to clan leaders and respect their orders to stop.",
-        punishment: "Warning → timeout → kick"
+        punishment: "Warning → Timeout → Kick."
     },
     5: {
         rule: "No inappropriate usernames, avatars, or content.",
@@ -43,41 +43,51 @@ const rules = {
     }
 };
 
+async function showRule(interaction, ruleNumber) {
+    const selectedRule = rules[ruleNumber];
+
+    if (!selectedRule) {
+        return interaction.reply({
+            content:
+                "❌ That rule does not exist. Please choose a rule between `1` and `10`.",
+            ephemeral: true
+        });
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle(`📜 Sanctuary Rule #${ruleNumber}`)
+        .setDescription(selectedRule.rule)
+        .addFields({
+            name: "⚖️ Punishment",
+            value: selectedRule.punishment
+        });
+
+    await interaction.reply({
+        embeds: [embed]
+    });
+}
+
+async function showAllRules(interaction) {
+    const embed = new EmbedBuilder()
+        .setTitle("📜 Sanctuary Clan Rules")
+        .setDescription(
+            "Use `/rule` to view a specific rule."
+        );
+
+    for (const [number, data] of Object.entries(rules)) {
+        embed.addFields({
+            name: `Rule ${number}`,
+            value: data.rule
+        });
+    }
+
+    await interaction.reply({
+        embeds: [embed]
+    });
+}
+
 module.exports = {
     rules,
-
-    async showRule(message, ruleNumber) {
-        const selectedRule = rules[ruleNumber];
-
-        if (!selectedRule) {
-            return message.reply(
-                "❌ That rule does not exist. Please choose a rule between `1` and `10`."
-            );
-        }
-
-        const embed = new EmbedBuilder()
-            .setTitle(`📜 Sanctuary Rule #${ruleNumber}`)
-            .setDescription(selectedRule.rule)
-            .addFields({
-                name: "⚖️ Punishment",
-                value: selectedRule.punishment
-            });
-
-        await message.reply({ embeds: [embed] });
-    },
-
-    async showAllRules(message) {
-        const embed = new EmbedBuilder()
-            .setTitle("📜 Sanctuary Clan Rules")
-            .setDescription("Use `;rule <number>` to view a specific rule.");
-
-        for (const [number, data] of Object.entries(rules)) {
-            embed.addFields({
-                name: `Rule ${number}`,
-                value: data.rule
-            });
-        }
-
-        await message.reply({ embeds: [embed] });
-    }
+    showRule,
+    showAllRules
 };
