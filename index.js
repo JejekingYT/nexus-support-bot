@@ -209,6 +209,25 @@ const commands = [
 
 async function registerCommands() {
     try {
+
+        // Check required environment variables
+        if (!process.env.DISCORD_TOKEN) {
+            console.error(
+                "❌ DISCORD_TOKEN is missing from your .env file!"
+            );
+            return;
+        }
+
+        if (!process.env.DISCORD_GUILD_ID) {
+            console.error(
+                "❌ DISCORD_GUILD_ID is missing from your .env file!"
+            );
+            console.error(
+                "💡 Add your Discord server ID to the .env file."
+            );
+            return;
+        }
+
         const rest = new REST({
             version: "10"
         }).setToken(
@@ -217,6 +236,14 @@ async function registerCommands() {
 
         console.log(
             "🔄 Registering slash commands..."
+        );
+
+        console.log(
+            `📡 Guild ID: ${process.env.DISCORD_GUILD_ID}`
+        );
+
+        console.log(
+            `🤖 Client ID: ${client.user.id}`
         );
 
         await rest.put(
@@ -230,10 +257,11 @@ async function registerCommands() {
         );
 
         console.log(
-            "✅ Slash commands registered successfully!"
+            `✅ ${commands.length} slash commands registered successfully!`
         );
 
     } catch (error) {
+
         console.error(
             "❌ Failed to register slash commands:",
             error
@@ -246,6 +274,7 @@ async function registerCommands() {
 // =========================
 
 client.once("ready", async () => {
+
     console.log(
         `✅ ${client.user.tag} is online!`
     );
@@ -448,18 +477,29 @@ console.log(
         : "NO"
 );
 
+console.log(
+    "🏠 Guild ID loaded:",
+    process.env.DISCORD_GUILD_ID
+        ? "YES"
+        : "NO"
+);
+
 client.login(
     process.env.DISCORD_TOKEN
 )
     .then(() => {
+
         console.log(
             "🔑 Login request sent to Discord."
         );
+
     })
     .catch(error => {
+
         console.error(
             "❌ Discord login failed:"
         );
 
         console.error(error);
+
     });
