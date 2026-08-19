@@ -37,6 +37,17 @@ const {
     addEvent
 } = require("./commands/addevent");
 
+// =========================
+// ENVIRONMENT VARIABLES
+// =========================
+
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
+const GUILD_ID = process.env.DISCORD_GUILD_ID;
+
+// =========================
+// CLIENT
+// =========================
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds
@@ -213,17 +224,21 @@ async function registerCommands() {
         // Check required environment variables
         if (!process.env.DISCORD_TOKEN) {
             console.error(
-                "❌ DISCORD_TOKEN is missing from your .env file!"
+                "❌ DISCORD_TOKEN is missing!"
             );
             return;
         }
 
-        if (!process.env.DISCORD_GUILD_ID) {
+        if (!CLIENT_ID) {
             console.error(
-                "❌ DISCORD_GUILD_ID is missing from your .env file!"
+                "❌ DISCORD_CLIENT_ID is missing!"
             );
+            return;
+        }
+
+        if (!GUILD_ID) {
             console.error(
-                "💡 Add your Discord server ID to the .env file."
+                "❌ DISCORD_GUILD_ID is missing!"
             );
             return;
         }
@@ -239,17 +254,21 @@ async function registerCommands() {
         );
 
         console.log(
-            `📡 Guild ID: ${process.env.DISCORD_GUILD_ID}`
+            `📡 Guild ID: ${GUILD_ID}`
         );
 
         console.log(
-            `🤖 Client ID: ${client.user.id}`
+            `🤖 Client ID: ${CLIENT_ID}`
+        );
+
+        console.log(
+            `📋 Commands to register: ${commands.length}`
         );
 
         await rest.put(
             Routes.applicationGuildCommands(
-                client.user.id,
-                process.env.DISCORD_GUILD_ID
+                CLIENT_ID,
+                GUILD_ID
             ),
             {
                 body: commands
@@ -478,8 +497,15 @@ console.log(
 );
 
 console.log(
+    "🆔 Client ID loaded:",
+    CLIENT_ID
+        ? "YES"
+        : "NO"
+);
+
+console.log(
     "🏠 Guild ID loaded:",
-    process.env.DISCORD_GUILD_ID
+    GUILD_ID
         ? "YES"
         : "NO"
 );
