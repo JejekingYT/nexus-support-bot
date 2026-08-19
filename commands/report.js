@@ -107,43 +107,39 @@ async function startReport(interaction) {
             dm,
             interaction.user.id,
             "👤 **Question 1/5:** Who are you reporting?\n" +
-            "Please enter their exact Discord username.\n\n" +
+            "Please enter their exact Discord username or display name.\n\n" +
             "Example: `Username123`"
         );
 
         if (!reportedUserAnswer) return;
 
-        // Find the reported member
+        // Find the reported member using ONLY exact matches
         const guild = interaction.guild;
 
         let reportedMember = null;
 
         if (guild) {
             try {
-                reportedMember = await guild.members.fetch({
-                    query: reportedUserAnswer.content,
-                    limit: 10
-                });
+                const searchName =
+                    reportedUserAnswer.content.trim().toLowerCase();
 
-                if (reportedMember && reportedMember.size > 0) {
-                    reportedMember = reportedMember.first();
-                } else {
-                    reportedMember = null;
-                }
-            } catch {
-                reportedMember = null;
-            }
-
-            if (!reportedMember) {
+                // Fetch all members and look for an exact username/display name.
+                // This prevents partial searches like "s" from selecting
+                // the first member whose name starts with "s".
                 const members = await guild.members.fetch();
 
                 reportedMember = members.find(
                     (member) =>
-                        member.user.username.toLowerCase() ===
-                            reportedUserAnswer.content.toLowerCase() ||
-                        member.displayName.toLowerCase() ===
-                            reportedUserAnswer.content.toLowerCase()
+                        member.user.username.toLowerCase() === searchName ||
+                        member.displayName.toLowerCase() === searchName
                 );
+            } catch (error) {
+                console.error(
+                    "Could not search for reported member:",
+                    error
+                );
+
+                reportedMember = null;
             }
         }
 
