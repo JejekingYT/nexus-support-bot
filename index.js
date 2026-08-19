@@ -75,7 +75,6 @@ client.on("messageCreate", async (message) => {
             "`;events` — Clan events\n\n" +
 
             "🛠️ **Support**\n" +
-            "`;apply` — Application information\n" +
             "`;report` — Report a member\n" +
             "`;appeal` — Appeal information"
         );
