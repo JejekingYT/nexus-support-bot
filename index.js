@@ -22,6 +22,10 @@ const {
     showSchedule
 } = require("./commands/schedule");
 
+const {
+    showEvents
+} = require("./commands/events");
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -100,6 +104,11 @@ client.on("messageCreate", async (message) => {
     // ;schedule
     if (command === "schedule") {
         return showSchedule(message);
+    }
+
+    // ;events
+    if (command === "events") {
+        return showEvents(message);
     }
 });
 
