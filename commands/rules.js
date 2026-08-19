@@ -15,7 +15,7 @@ const rules = {
     },
     4: {
         rule: "Listen to clan leaders and respect their orders to stop.",
-        punishment: "Warning → Removed from the event."
+        punishment: "Warning → timeout → kick"
     },
     5: {
         rule: "No inappropriate usernames, avatars, or content.",
