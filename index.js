@@ -34,7 +34,8 @@ const {
 } = require("./commands/report");
 
 const {
-    addEvent
+    addEvent,
+    getEvents
 } = require("./commands/addevent");
 
 const {
@@ -215,23 +216,22 @@ const commands = [
                 .setRequired(true)
         ),
 
-        // /deleteevent
-new SlashCommandBuilder()
-    .setName("deleteevent")
-    .setDescription(
-        "Delete an existing Sanctuary event"
-    )
-    .addStringOption(option =>
-        option
-            .setName("id")
-            .setDescription(
-                "The event ID, for example EVENT-001"
-            )
-            .setRequired(true)
-    )
-
-    .setDefaultMemberPermissions("8"),
-        
+    // /deleteevent
+    new SlashCommandBuilder()
+        .setName("deleteevent")
+        .setDescription(
+            "Delete an existing Sanctuary event"
+        )
+        .addStringOption(option =>
+            option
+                .setName("event")
+                .setDescription(
+                    "Select the event you want to delete"
+                )
+                .setRequired(true)
+                .setAutocomplete(true)
+        )
+        .setDefaultMemberPermissions("8")
 
 ].map(command => command.toJSON());
 
@@ -242,7 +242,6 @@ new SlashCommandBuilder()
 async function registerCommands() {
     try {
 
-        // Check required environment variables
         if (!process.env.DISCORD_TOKEN) {
             console.error(
                 "❌ DISCORD_TOKEN is missing!"
@@ -331,6 +330,61 @@ client.on(
     async interaction => {
 
         // =========================
+        // AUTOCOMPLETE
+        // =========================
+
+        if (interaction.isAutocomplete()) {
+
+            if (
+                interaction.commandName === "deleteevent"
+            ) {
+
+                try {
+
+                    const events = getEvents();
+
+                    const search =
+                        interaction.options
+                            .getString("event")
+                            ?.toLowerCase() || "";
+
+                    const filteredEvents =
+                        events
+                            .filter(event =>
+                                event.name
+                                    .toLowerCase()
+                                    .includes(search)
+                            )
+                            .slice(0, 25);
+
+                    await interaction.respond(
+                        filteredEvents.map(event => ({
+                            name:
+                                `${event.name} — ${event.date} ${event.time}`
+                                    .slice(0, 100),
+
+                            value: String(event.id)
+                        }))
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "❌ Event autocomplete error:",
+                        error
+                    );
+
+                    await interaction.respond([]);
+
+                }
+
+                return;
+            }
+
+            return;
+        }
+
+        // =========================
         // SLASH COMMANDS
         // =========================
 
@@ -359,7 +413,8 @@ client.on(
                         "`/report` — Report a member\n\n" +
 
                         "🔐 **Administration**\n" +
-                        "`/addevent` — Create a new event"
+                        "`/addevent` — Create a new event\n" +
+                        "`/deleteevent` — Delete an existing event"
                     );
                 }
 
