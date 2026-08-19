@@ -3,7 +3,16 @@ const { getEvents } = require("./addevent");
 
 async function showEvents(interaction) {
     try {
-        const events = getEvents();
+
+        // =========================
+        // GET EVENTS FROM MYSQL
+        // =========================
+
+        const events = await getEvents();
+
+        // =========================
+        // CREATE EMBED
+        // =========================
 
         const embed = new EmbedBuilder()
             .setTitle("🎉 Sanctuary Events")
@@ -17,42 +26,75 @@ async function showEvents(interaction) {
             })
             .setTimestamp();
 
+        // =========================
+        // NO EVENTS
+        // =========================
+
         if (events.length === 0) {
+
             embed.addFields({
                 name: "📅 Upcoming Events",
                 value: "No events have been scheduled yet."
             });
+
         } else {
+
+            // =========================
+            // DISPLAY EVENTS
+            // =========================
+
             for (const event of events) {
+
                 embed.addFields({
                     name: `🎉 ${event.name}`,
                     value:
+                        `🆔 **ID:** ${event.id}\n` +
                         `📅 **Date:** ${event.date}\n` +
                         `🕐 **Time:** ${event.time}\n` +
                         `📍 **Location:** ${event.location}\n` +
                         `📝 **Description:** ${event.description}\n` +
                         `👤 **Created by:** <@${event.createdBy}>`
                 });
+
             }
         }
+
+        // =========================
+        // SEND RESPONSE
+        // =========================
 
         await interaction.reply({
             embeds: [embed]
         });
 
     } catch (error) {
+
         console.error(
             "❌ Events error:",
             error
         );
 
-        if (!interaction.replied) {
-            await interaction.reply({
-                content:
-                    "❌ Something went wrong while loading the events.",
-                ephemeral: true
-            });
-        }
+        try {
+
+            if (interaction.replied) {
+
+                await interaction.followUp({
+                    content:
+                        "❌ Something went wrong while loading the events.",
+                    ephemeral: true
+                });
+
+            } else {
+
+                await interaction.reply({
+                    content:
+                        "❌ Something went wrong while loading the events.",
+                    ephemeral: true
+                });
+
+            }
+
+        } catch {}
     }
 }
 

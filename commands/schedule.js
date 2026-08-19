@@ -3,7 +3,16 @@ const { getEvents } = require("./addevent");
 
 async function showSchedule(interaction) {
     try {
-        const events = getEvents();
+
+        // =========================
+        // GET EVENTS FROM MYSQL
+        // =========================
+
+        const events = await getEvents();
+
+        // =========================
+        // CREATE EMBED
+        // =========================
 
         const embed = new EmbedBuilder()
             .setTitle("📅 Sanctuary Schedule")
@@ -26,11 +35,14 @@ async function showSchedule(interaction) {
         // =========================
 
         if (events.length === 0) {
+
             embed.addFields({
                 name: "🎉 Events",
                 value: "No events scheduled."
             });
+
         } else {
+
             const eventList = events
                 .map(event =>
                     `🎉 **${event.name}**\n` +
@@ -55,27 +67,50 @@ async function showSchedule(interaction) {
                 "All upcoming activities will be announced in the appropriate channels."
         });
 
+        // =========================
+        // FOOTER
+        // =========================
+
         embed.setFooter({
             text: "The Sanctuary made by Nexus"
         });
+
+        // =========================
+        // SEND
+        // =========================
 
         await interaction.reply({
             embeds: [embed]
         });
 
     } catch (error) {
+
         console.error(
             "❌ Schedule error:",
             error
         );
 
-        if (!interaction.replied) {
-            await interaction.reply({
-                content:
-                    "❌ Something went wrong while loading the schedule.",
-                ephemeral: true
-            });
-        }
+        try {
+
+            if (interaction.replied) {
+
+                await interaction.followUp({
+                    content:
+                        "❌ Something went wrong while loading the schedule.",
+                    ephemeral: true
+                });
+
+            } else {
+
+                await interaction.reply({
+                    content:
+                        "❌ Something went wrong while loading the schedule.",
+                    ephemeral: true
+                });
+
+            }
+
+        } catch {}
     }
 }
 

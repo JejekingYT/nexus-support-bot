@@ -19,7 +19,7 @@ async function getEvents() {
                 createdBy,
                 createdAt
             FROM events
-            ORDER BY date ASC, time ASC
+            ORDER BY createdAt ASC
         `);
 
         return rows;
@@ -31,7 +31,7 @@ async function getEvents() {
             error
         );
 
-        return [];
+        throw error;
     }
 }
 
@@ -47,7 +47,9 @@ async function getNextEventId() {
             SELECT id
             FROM events
             WHERE id LIKE 'EVENT-%'
-            ORDER BY id DESC
+            ORDER BY CAST(
+                SUBSTRING(id, 7) AS UNSIGNED
+            ) DESC
             LIMIT 1
         `);
 
@@ -77,7 +79,7 @@ async function getNextEventId() {
             error
         );
 
-        return `EVENT-${Date.now()}`;
+        throw error;
     }
 }
 

@@ -14,18 +14,14 @@ const pool = mysql.createPool({
 
 async function initializeDatabase() {
     try {
-
         const connection = await pool.getConnection();
 
         console.log("✅ Connected to MySQL database.");
 
-        // =========================
-        // EVENTS TABLE
-        // =========================
-
+        // Create events table
         await connection.query(`
             CREATE TABLE IF NOT EXISTS events (
-                id VARCHAR(20) PRIMARY KEY,
+                id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 date VARCHAR(100) NOT NULL,
                 time VARCHAR(100) NOT NULL,
@@ -36,30 +32,26 @@ async function initializeDatabase() {
             )
         `);
 
-        console.log("✅ Events table is ready.");
-
-        // =========================
-        // REPORT COUNTER TABLE
-        // =========================
-
+        // Create reports table
         await connection.query(`
-            CREATE TABLE IF NOT EXISTS report_counter (
-                id INT PRIMARY KEY,
-                lastReport INT NOT NULL
+            CREATE TABLE IF NOT EXISTS reports (
+                id VARCHAR(50) PRIMARY KEY,
+                reporterId VARCHAR(255) NOT NULL,
+                reportedUserId VARCHAR(255) NOT NULL,
+                reason TEXT NOT NULL,
+                priority VARCHAR(50) NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'unclaimed',
+                claimedBy VARCHAR(255) NULL,
+                createdAt DATETIME NOT NULL,
+                closedAt DATETIME NULL,
+                closedBy VARCHAR(255) NULL
             )
         `);
-
-        await connection.query(`
-            INSERT IGNORE INTO report_counter (
-                id,
-                lastReport
-            )
-            VALUES (1, 0)
-        `);
-
-        console.log("✅ Report counter is ready.");
 
         connection.release();
+
+        console.log("✅ Events table is ready.");
+        console.log("✅ Reports table is ready.");
 
     } catch (error) {
 
