@@ -1,26 +1,33 @@
-const fs = require("fs");
-const path = require("path");
 const { PermissionFlagsBits } = require("discord.js");
+const { pool } = require("../database");
 
-const EVENTS_FILE = path.join(
-    __dirname,
-    "..",
-    "data",
-    "events.json"
-);
+// =========================
+// GET EVENTS
+// =========================
 
-function getEvents() {
+async function getEvents() {
     try {
-        if (!fs.existsSync(EVENTS_FILE)) {
-            return [];
-        }
 
-        return JSON.parse(
-            fs.readFileSync(EVENTS_FILE, "utf8")
-        );
+        const [rows] = await pool.query(`
+            SELECT
+                id,
+                name,
+                date,
+                time,
+                location,
+                description,
+                createdBy,
+                createdAt
+            FROM events
+            ORDER BY date ASC, time ASC
+        `);
+
+        return rows;
+
     } catch (error) {
+
         console.error(
-            "Could not read events:",
+            "❌ Could not read events from MySQL:",
             error
         );
 
@@ -28,60 +35,55 @@ function getEvents() {
     }
 }
 
-function saveEvents(events) {
-    try {
-        const dataFolder = path.dirname(
-            EVENTS_FILE
-        );
+// =========================
+// GET NEXT EVENT ID
+// =========================
 
-        if (!fs.existsSync(dataFolder)) {
-            fs.mkdirSync(dataFolder, {
-                recursive: true
-            });
+async function getNextEventId() {
+
+    try {
+
+        const [rows] = await pool.query(`
+            SELECT id
+            FROM events
+            WHERE id LIKE 'EVENT-%'
+            ORDER BY id DESC
+            LIMIT 1
+        `);
+
+        if (rows.length === 0) {
+            return "EVENT-001";
         }
 
-        fs.writeFileSync(
-            EVENTS_FILE,
-            JSON.stringify(events, null, 2)
+        const lastId = String(rows[0].id);
+
+        const number = parseInt(
+            lastId.replace("EVENT-", ""),
+            10
         );
 
-        return true;
+        if (isNaN(number)) {
+            return "EVENT-001";
+        }
+
+        return `EVENT-${String(
+            number + 1
+        ).padStart(3, "0")}`;
+
     } catch (error) {
+
         console.error(
-            "Could not save events:",
+            "❌ Could not generate event ID:",
             error
         );
 
-        return false;
+        return `EVENT-${Date.now()}`;
     }
 }
 
-function getNextEventId(events) {
-    let highestNumber = 0;
-
-    for (const event of events) {
-        if (
-            typeof event.id === "string" &&
-            event.id.startsWith("EVENT-")
-        ) {
-            const number = parseInt(
-                event.id.replace("EVENT-", ""),
-                10
-            );
-
-            if (!isNaN(number)) {
-                highestNumber = Math.max(
-                    highestNumber,
-                    number
-                );
-            }
-        }
-    }
-
-    return `EVENT-${String(
-        highestNumber + 1
-    ).padStart(3, "0")}`;
-}
+// =========================
+// ADD EVENT
+// =========================
 
 async function addEvent(interaction) {
 
@@ -120,44 +122,44 @@ async function addEvent(interaction) {
             interaction.options.getString("location");
 
         const eventDescription =
-            interaction.options.getString(
-                "description"
-            );
+            interaction.options.getString("description");
 
         // =========================
-        // GET EXISTING EVENTS
+        // CREATE EVENT ID
         // =========================
 
-        const events = getEvents();
+        const eventId =
+            await getNextEventId();
 
         // =========================
-        // CREATE EVENT
+        // SAVE TO MYSQL
         // =========================
 
-        const event = {
-            id: getNextEventId(events),
-            name: eventName,
-            date: eventDate,
-            time: eventTime,
-            location: eventLocation,
-            description: eventDescription,
-            createdBy: interaction.user.id,
-            createdAt: new Date().toISOString()
-        };
-
-        events.push(event);
-
-        // =========================
-        // SAVE EVENT
-        // =========================
-
-        if (!saveEvents(events)) {
-            return interaction.reply({
-                content:
-                    "❌ Something went wrong while saving the event.",
-                ephemeral: true
-            });
-        }
+        await pool.execute(
+            `
+            INSERT INTO events (
+                id,
+                name,
+                date,
+                time,
+                location,
+                description,
+                createdBy,
+                createdAt
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            [
+                eventId,
+                eventName,
+                eventDate,
+                eventTime,
+                eventLocation,
+                eventDescription,
+                interaction.user.id,
+                new Date()
+            ]
+        );
 
         // =========================
         // SUCCESS
@@ -166,12 +168,12 @@ async function addEvent(interaction) {
         await interaction.reply({
             content:
                 "✅ **Event created successfully!**\n\n" +
-                `🆔 **${event.id}**\n` +
-                `🎉 **${event.name}**\n` +
-                `📅 ${event.date}\n` +
-                `🕐 ${event.time}\n` +
-                `📍 ${event.location}\n` +
-                `📝 ${event.description}`,
+                `🆔 **${eventId}**\n` +
+                `🎉 **${eventName}**\n` +
+                `📅 ${eventDate}\n` +
+                `🕐 ${eventTime}\n` +
+                `📍 ${eventLocation}\n` +
+                `📝 ${eventDescription}`,
             ephemeral: true
         });
 
@@ -208,6 +210,5 @@ async function addEvent(interaction) {
 
 module.exports = {
     addEvent,
-    getEvents,
-    saveEvents
+    getEvents
 };

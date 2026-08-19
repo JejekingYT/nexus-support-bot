@@ -1,6 +1,3 @@
-const fs = require("fs");
-const path = require("path");
-
 const {
     ActionRowBuilder,
     ButtonBuilder,
@@ -8,47 +5,53 @@ const {
     EmbedBuilder
 } = require("discord.js");
 
+const { pool } = require("../database");
+
 const REPORT_CHANNEL_ID = "1539597296486850610";
 
-const COUNTER_FILE = path.join(
-    __dirname,
-    "..",
-    "data",
-    "report-counter.json"
-);
+// =========================
+// GET NEXT REPORT NUMBER
+// =========================
 
-function getNextReportNumber() {
-    let data = {
-        lastReport: 0
-    };
+async function getNextReportNumber() {
+    const connection = await pool.getConnection();
 
     try {
-        if (fs.existsSync(COUNTER_FILE)) {
-            data = JSON.parse(
-                fs.readFileSync(COUNTER_FILE, "utf8")
-            );
-        }
-    } catch (error) {
-        console.error("Could not read report counter:", error);
+        // Make sure the counter exists
+        await connection.query(`
+            INSERT IGNORE INTO report_counter
+            (id, lastReport)
+            VALUES (1, 0)
+        `);
+
+        // Atomically increase the counter
+        await connection.query(`
+            UPDATE report_counter
+            SET lastReport = LAST_INSERT_ID(lastReport + 1)
+            WHERE id = 1
+        `);
+
+        const [rows] = await connection.query(`
+            SELECT LAST_INSERT_ID() AS reportNumber
+        `);
+
+        const reportNumber = rows[0].reportNumber;
+
+        return `REPORT-${String(reportNumber).padStart(3, "0")}`;
+
+    } finally {
+        connection.release();
     }
-
-    data.lastReport++;
-
-    try {
-        fs.writeFileSync(
-            COUNTER_FILE,
-            JSON.stringify(data, null, 2)
-        );
-    } catch (error) {
-        console.error("Could not save report counter:", error);
-    }
-
-    return `REPORT-${String(data.lastReport).padStart(3, "0")}`;
 }
 
+// =========================
 // /report
+// =========================
+
 async function createReport(interaction) {
+
     try {
+
         const reportedMember =
             interaction.options.getMember("user");
 
@@ -57,6 +60,10 @@ async function createReport(interaction) {
 
         const priority =
             interaction.options.getString("priority") || "normal";
+
+        // =========================
+        // VALIDATION
+        // =========================
 
         if (!reportedMember) {
             return interaction.reply({
@@ -82,6 +89,10 @@ async function createReport(interaction) {
             });
         }
 
+        // =========================
+        // PRIORITY
+        // =========================
+
         let priorityText;
 
         if (priority === "low") {
@@ -92,20 +103,36 @@ async function createReport(interaction) {
             priorityText = "🟡 Normal";
         }
 
-        const reportId = getNextReportNumber();
+        // =========================
+        // GENERATE REPORT ID
+        // =========================
+
+        const reportId =
+            await getNextReportNumber();
+
+        // =========================
+        // REPORT CHANNEL
+        // =========================
 
         const reportChannel =
             await interaction.client.channels.fetch(
                 REPORT_CHANNEL_ID
             );
 
-        if (!reportChannel || !reportChannel.isTextBased()) {
+        if (
+            !reportChannel ||
+            !reportChannel.isTextBased()
+        ) {
             return interaction.reply({
                 content:
                     "❌ The reports channel could not be found.",
                 ephemeral: true
             });
         }
+
+        // =========================
+        // NAMES
+        // =========================
 
         const reporterName =
             interaction.member?.displayName ||
@@ -117,56 +144,90 @@ async function createReport(interaction) {
             `<@${reportedMember.id}>\n` +
             `@${reportedMember.user.username}`;
 
-        const reportEmbed = new EmbedBuilder()
-            .setTitle(`🚨 ${reportId} — New Member Report`)
-            .setDescription(
-                `A new report has been submitted by **${reporterName}**.`
-            )
-            .addFields(
-                {
-                    name: "👤 Reporter",
-                    value:
-                        `**${reporterName}**\n` +
-                        `<@${interaction.user.id}>\n` +
-                        `@${interaction.user.username}`
-                },
-                {
-                    name: "🎯 Reported Member",
-                    value: reportedMemberText
-                },
-                {
-                    name: "🚨 Priority",
-                    value: priorityText
-                },
-                {
-                    name: "📝 Reason",
-                    value: reason
-                },
-                {
-                    name: "📌 Status",
-                    value: "🟡 Unclaimed"
-                }
-            )
-            .setTimestamp();
+        // =========================
+        // EMBED
+        // =========================
 
-        const buttons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("claim_report")
-                .setLabel("Claim Report")
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji("🟢"),
+        const reportEmbed =
+            new EmbedBuilder()
+                .setTitle(
+                    `🚨 ${reportId} — New Member Report`
+                )
+                .setDescription(
+                    `A new report has been submitted by **${reporterName}**.`
+                )
+                .addFields(
+                    {
+                        name: "👤 Reporter",
+                        value:
+                            `**${reporterName}**\n` +
+                            `<@${interaction.user.id}>\n` +
+                            `@${interaction.user.username}`
+                    },
+                    {
+                        name: "🎯 Reported Member",
+                        value: reportedMemberText
+                    },
+                    {
+                        name: "🚨 Priority",
+                        value: priorityText
+                    },
+                    {
+                        name: "📝 Reason",
+                        value: reason
+                    },
+                    {
+                        name: "📌 Status",
+                        value: "🟡 Unclaimed"
+                    }
+                )
+                .setTimestamp();
 
-            new ButtonBuilder()
-                .setCustomId("close_report")
-                .setLabel("Close Report")
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji("🔴")
-        );
+        // =========================
+        // BUTTONS
+        // =========================
+
+        const buttons =
+            new ActionRowBuilder()
+                .addComponents(
+
+                    new ButtonBuilder()
+                        .setCustomId(
+                            "claim_report"
+                        )
+                        .setLabel(
+                            "Claim Report"
+                        )
+                        .setStyle(
+                            ButtonStyle.Primary
+                        )
+                        .setEmoji("🟢"),
+
+                    new ButtonBuilder()
+                        .setCustomId(
+                            "close_report"
+                        )
+                        .setLabel(
+                            "Close Report"
+                        )
+                        .setStyle(
+                            ButtonStyle.Danger
+                        )
+                        .setEmoji("🔴")
+                );
+
+        // =========================
+        // SEND REPORT
+        // =========================
 
         await reportChannel.send({
             embeds: [reportEmbed],
             components: [buttons]
         });
+
+        // =========================
+        // SUCCESS
+        // =========================
 
         await interaction.reply({
             content:
@@ -178,44 +239,74 @@ async function createReport(interaction) {
         });
 
     } catch (error) {
-        console.error("Report error:", error);
+
+        console.error(
+            "❌ Report error:",
+            error
+        );
 
         try {
+
             if (interaction.replied) {
+
                 await interaction.followUp({
                     content:
                         "❌ Something went wrong while submitting the report.",
                     ephemeral: true
                 });
+
             } else {
+
                 await interaction.reply({
                     content:
                         "❌ Something went wrong while submitting the report.",
                     ephemeral: true
                 });
+
             }
+
         } catch {}
     }
 }
 
+// =========================
+// CLAIM REPORT
+// =========================
+
 async function claimReport(interaction) {
-    const message = interaction.message;
 
-    if (!message.embeds.length) return;
+    const message =
+        interaction.message;
 
-    const embed = EmbedBuilder.from(message.embeds[0]);
-    const fields = embed.data.fields || [];
+    if (!message.embeds.length) {
+        return;
+    }
 
-    const statusField = fields.find(
-        field => field.name === "📌 Status"
-    );
+    const embed =
+        EmbedBuilder.from(
+            message.embeds[0]
+        );
 
-    if (statusField && statusField.value !== "🟡 Unclaimed") {
+    const fields =
+        embed.data.fields || [];
+
+    const statusField =
+        fields.find(
+            field =>
+                field.name === "📌 Status"
+        );
+
+    if (
+        statusField &&
+        statusField.value !== "🟡 Unclaimed"
+    ) {
+
         return interaction.reply({
             content:
                 "❌ This report has already been claimed or closed.",
             ephemeral: true
         });
+
     }
 
     const staffName =
@@ -223,16 +314,24 @@ async function claimReport(interaction) {
         interaction.user.displayName ||
         interaction.user.username;
 
-    const newFields = fields.map(field => {
-        if (field.name === "📌 Status") {
-            return {
-                name: "📌 Status",
-                value: `🟢 Claimed by **${staffName}**\n<@${interaction.user.id}>`
-            };
-        }
+    const newFields =
+        fields.map(field => {
 
-        return field;
-    });
+            if (
+                field.name === "📌 Status"
+            ) {
+
+                return {
+                    name: "📌 Status",
+                    value:
+                        `🟢 Claimed by **${staffName}**\n` +
+                        `<@${interaction.user.id}>`
+                };
+
+            }
+
+            return field;
+        });
 
     embed.setFields(newFields);
 
@@ -241,34 +340,56 @@ async function claimReport(interaction) {
     });
 
     await interaction.reply({
-        content: "🟢 You have claimed this report.",
+        content:
+            "🟢 You have claimed this report.",
         ephemeral: true
     });
 }
 
+// =========================
+// CLOSE REPORT
+// =========================
+
 async function closeReport(interaction) {
-    const message = interaction.message;
 
-    if (!message.embeds.length) return;
+    const message =
+        interaction.message;
 
-    const embed = EmbedBuilder.from(message.embeds[0]);
-    const fields = embed.data.fields || [];
+    if (!message.embeds.length) {
+        return;
+    }
+
+    const embed =
+        EmbedBuilder.from(
+            message.embeds[0]
+        );
+
+    const fields =
+        embed.data.fields || [];
 
     const staffName =
         interaction.member?.displayName ||
         interaction.user.displayName ||
         interaction.user.username;
 
-    const newFields = fields.map(field => {
-        if (field.name === "📌 Status") {
-            return {
-                name: "📌 Status",
-                value: `🔴 Closed by **${staffName}**\n<@${interaction.user.id}>`
-            };
-        }
+    const newFields =
+        fields.map(field => {
 
-        return field;
-    });
+            if (
+                field.name === "📌 Status"
+            ) {
+
+                return {
+                    name: "📌 Status",
+                    value:
+                        `🔴 Closed by **${staffName}**\n` +
+                        `<@${interaction.user.id}>`
+                };
+
+            }
+
+            return field;
+        });
 
     embed.setFields(newFields);
 
@@ -278,10 +399,15 @@ async function closeReport(interaction) {
     });
 
     await interaction.reply({
-        content: "🔴 Report closed.",
+        content:
+            "🔴 Report closed.",
         ephemeral: true
     });
 }
+
+// =========================
+// EXPORTS
+// =========================
 
 module.exports = {
     createReport,

@@ -42,6 +42,10 @@ const {
     deleteEvent
 } = require("./commands/deleteevent");
 
+const {
+    initializeDatabase
+} = require("./database");
+
 // =========================
 // ENVIRONMENT VARIABLES
 // =========================
@@ -595,9 +599,18 @@ console.log(
         : "NO"
 );
 
-client.login(
-    process.env.DISCORD_TOKEN
-)
+initializeDatabase()
+    .then(() => {
+
+        console.log(
+            "🗄️ Database initialized successfully."
+        );
+
+        return client.login(
+            process.env.DISCORD_TOKEN
+        );
+
+    })
     .then(() => {
 
         console.log(
@@ -608,7 +621,7 @@ client.login(
     .catch(error => {
 
         console.error(
-            "❌ Discord login failed:"
+            "❌ Startup failed:"
         );
 
         console.error(error);
