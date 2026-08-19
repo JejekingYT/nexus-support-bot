@@ -30,9 +30,8 @@ async function askQuestion(dm, userId, question) {
 
     try {
         const collected = await dm.awaitMessages({
-            filter: (msg) => {
-                return msg.author.id === userId && !msg.author.bot;
-            },
+            filter: (msg) =>
+                msg.author.id === userId && !msg.author.bot,
             max: 1,
             time: 300000,
             errors: ["time"]
@@ -51,14 +50,15 @@ async function askQuestion(dm, userId, question) {
 async function startReport(interaction) {
     try {
         await interaction.reply({
-            content: "📩 Check your DMs! The report questions have been sent to you.",
+            content:
+                "📩 Check your DMs! The report questions have been sent to you.",
             ephemeral: true
         });
 
         const dm = await interaction.user.createDM();
 
         await dm.send(
-            "🚨 **Sanctuary Report System**\n\n" +
+            "🚨 **Nexus Report System**\n\n" +
             "Please answer the following questions honestly.\n" +
             "You have **5 minutes** to answer each question."
         );
@@ -90,14 +90,13 @@ async function startReport(interaction) {
         const evidence = await askQuestion(
             dm,
             interaction.user.id,
-            "📸 **Question 4/4:** Do you have any evidence?\nYou can send links or screenshots, or type `No evidence`."
+            "📸 **Question 4/4:** Do you have any evidence?\nSend links/screenshots or type `No evidence`."
         );
 
         if (!evidence) return;
 
-        const reportChannel = await interaction.client.channels.fetch(
-            REPORT_CHANNEL_ID
-        );
+        const reportChannel =
+            await interaction.client.channels.fetch(REPORT_CHANNEL_ID);
 
         if (!reportChannel || !reportChannel.isTextBased()) {
             return dm.send(
@@ -107,37 +106,59 @@ async function startReport(interaction) {
 
         const reportEmbed = new EmbedBuilder()
             .setTitle("🚨 New Member Report")
+            .setDescription(
+                `A new report has been submitted by **${interaction.user.tag}**.`
+            )
             .addFields(
                 {
-                    name: "Reporter",
+                    name: "👤 Reporter",
                     value: `${interaction.user.tag} (${interaction.user.id})`
                 },
                 {
-                    name: "Reported Member",
+                    name: "🎯 Reported Member",
                     value: reportedUser.content
                 },
                 {
-                    name: "What Happened",
+                    name: "📝 What Happened",
                     value: whatHappened.content
                 },
                 {
-                    name: "When",
+                    name: "📅 When",
                     value: when.content
                 },
                 {
-                    name: "Evidence",
+                    name: "📸 Evidence",
                     value: evidence.content
+                },
+                {
+                    name: "📌 Status",
+                    value: "🟡 Unclaimed"
                 }
             )
             .setTimestamp();
 
+        const buttons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("claim_report")
+                .setLabel("Claim Report")
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji("🟢"),
+
+            new ButtonBuilder()
+                .setCustomId("close_report")
+                .setLabel("Close Report")
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji("🔴")
+        );
+
         await reportChannel.send({
-            embeds: [reportEmbed]
+            embeds: [reportEmbed],
+            components: [buttons]
         });
 
         await dm.send(
             "✅ **Your report has been submitted successfully.**\n\n" +
-            "The staff team will review it."
+            "The Nexus staff team will review it."
         );
 
     } catch (error) {
@@ -153,7 +174,85 @@ async function startReport(interaction) {
     }
 }
 
+async function claimReport(interaction) {
+    const message = interaction.message;
+
+    if (!message.embeds.length) return;
+
+    const embed = EmbedBuilder.from(message.embeds[0]);
+
+    const fields = embed.data.fields || [];
+
+    const statusField = fields.find(
+        field => field.name === "📌 Status"
+    );
+
+    if (statusField && statusField.value !== "🟡 Unclaimed") {
+        return interaction.reply({
+            content: "❌ This report has already been claimed.",
+            ephemeral: true
+        });
+    }
+
+    const newFields = fields.map(field => {
+        if (field.name === "📌 Status") {
+            return {
+                name: "📌 Status",
+                value: `🟢 Claimed by ${interaction.user.tag}`
+            };
+        }
+
+        return field;
+    });
+
+    embed.setFields(newFields);
+
+    await message.edit({
+        embeds: [embed]
+    });
+
+    await interaction.reply({
+        content: "🟢 You have claimed this report.",
+        ephemeral: true
+    });
+}
+
+async function closeReport(interaction) {
+    const message = interaction.message;
+
+    if (!message.embeds.length) return;
+
+    const embed = EmbedBuilder.from(message.embeds[0]);
+
+    const fields = embed.data.fields || [];
+
+    const newFields = fields.map(field => {
+        if (field.name === "📌 Status") {
+            return {
+                name: "📌 Status",
+                value: `🔴 Closed by ${interaction.user.tag}`
+            };
+        }
+
+        return field;
+    });
+
+    embed.setFields(newFields);
+
+    await message.edit({
+        embeds: [embed],
+        components: []
+    });
+
+    await interaction.reply({
+        content: "🔴 Report closed.",
+        ephemeral: true
+    });
+}
+
 module.exports = {
     showReport,
-    startReport
+    startReport,
+    claimReport,
+    closeReport
 };

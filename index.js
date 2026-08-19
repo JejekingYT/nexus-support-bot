@@ -28,7 +28,9 @@ const {
 
 const {
     showReport,
-    startReport
+    startReport,
+    claimReport,
+    closeReport
 } = require("./commands/report");
 
 const client = new Client({
@@ -127,7 +129,15 @@ client.on("interactionCreate", async (interaction) => {
     if (!interaction.isButton()) return;
 
     if (interaction.customId === "start_report") {
-        await startReport(interaction);
+        return startReport(interaction);
+    }
+
+    if (interaction.customId === "claim_report") {
+        return claimReport(interaction);
+    }
+
+    if (interaction.customId === "close_report") {
+        return closeReport(interaction);
     }
 });
 
