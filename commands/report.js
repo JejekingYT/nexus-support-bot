@@ -63,22 +63,76 @@ async function startReport(interaction) {
             "You have **5 minutes** to answer each question."
         );
 
-        const reportedUser = await askQuestion(
+        // Question 1
+        const reportedUserAnswer = await askQuestion(
             dm,
             interaction.user.id,
-            "👤 **Question 1/4:** Who are you reporting?\nPlease provide their username."
+            "👤 **Question 1/4:** Who are you reporting?\n" +
+            "Please enter their exact Discord username.\n\n" +
+            "Example: `Username123`"
         );
 
-        if (!reportedUser) return;
+        if (!reportedUserAnswer) return;
 
+        // Find the reported member
+        const guild = interaction.guild;
+
+        let reportedMember = null;
+
+        if (guild) {
+            try {
+                reportedMember = await guild.members.fetch({
+                    query: reportedUserAnswer.content,
+                    limit: 10
+                });
+
+                // If fetch returns a collection, get the first result
+                if (reportedMember && reportedMember.size > 0) {
+                    reportedMember = reportedMember.first();
+                } else {
+                    reportedMember = null;
+                }
+            } catch {
+                reportedMember = null;
+            }
+
+            // Try exact username/display name match
+            if (!reportedMember) {
+                const members = await guild.members.fetch();
+
+                reportedMember = members.find(
+                    (member) =>
+                        member.user.username.toLowerCase() ===
+                            reportedUserAnswer.content.toLowerCase() ||
+                        member.displayName.toLowerCase() ===
+                            reportedUserAnswer.content.toLowerCase()
+                );
+            }
+        }
+
+        let reportedMemberText;
+
+        if (reportedMember) {
+            reportedMemberText =
+                `**${reportedMember.displayName}**\n` +
+                `@${reportedMember.user.username}`;
+        } else {
+            reportedMemberText =
+                `**${reportedUserAnswer.content}**\n` +
+                `⚠️ Member could not be found in this server.`;
+        }
+
+        // Question 2
         const whatHappened = await askQuestion(
             dm,
             interaction.user.id,
-            "📝 **Question 2/4:** What happened?\nPlease explain the situation."
+            "📝 **Question 2/4:** What happened?\n" +
+            "Please explain the situation."
         );
 
         if (!whatHappened) return;
 
+        // Question 3
         const when = await askQuestion(
             dm,
             interaction.user.id,
@@ -87,10 +141,12 @@ async function startReport(interaction) {
 
         if (!when) return;
 
+        // Question 4
         const evidence = await askQuestion(
             dm,
             interaction.user.id,
-            "📸 **Question 4/4:** Do you have any evidence?\nSend links/screenshots or type `No evidence`."
+            "📸 **Question 4/4:** Do you have any evidence?\n" +
+            "Send links/screenshots or type `No evidence`."
         );
 
         if (!evidence) return;
@@ -104,19 +160,26 @@ async function startReport(interaction) {
             );
         }
 
+        const reporterName =
+            interaction.member?.displayName ||
+            interaction.user.displayName ||
+            interaction.user.username;
+
         const reportEmbed = new EmbedBuilder()
             .setTitle("🚨 New Member Report")
             .setDescription(
-                `A new report has been submitted by **${interaction.user.tag}**.`
+                `A new report has been submitted by **${reporterName}**.`
             )
             .addFields(
                 {
                     name: "👤 Reporter",
-                    value: `${interaction.user.tag} (${interaction.user.id})`
+                    value:
+                        `**${reporterName}**\n` +
+                        `@${interaction.user.username}`
                 },
                 {
                     name: "🎯 Reported Member",
-                    value: reportedUser.content
+                    value: reportedMemberText
                 },
                 {
                     name: "📝 What Happened",
@@ -180,7 +243,6 @@ async function claimReport(interaction) {
     if (!message.embeds.length) return;
 
     const embed = EmbedBuilder.from(message.embeds[0]);
-
     const fields = embed.data.fields || [];
 
     const statusField = fields.find(
@@ -194,11 +256,16 @@ async function claimReport(interaction) {
         });
     }
 
+    const staffName =
+        interaction.member?.displayName ||
+        interaction.user.displayName ||
+        interaction.user.username;
+
     const newFields = fields.map(field => {
         if (field.name === "📌 Status") {
             return {
                 name: "📌 Status",
-                value: `🟢 Claimed by ${interaction.user.tag}`
+                value: `🟢 Claimed by **${staffName}**`
             };
         }
 
@@ -223,14 +290,18 @@ async function closeReport(interaction) {
     if (!message.embeds.length) return;
 
     const embed = EmbedBuilder.from(message.embeds[0]);
-
     const fields = embed.data.fields || [];
+
+    const staffName =
+        interaction.member?.displayName ||
+        interaction.user.displayName ||
+        interaction.user.username;
 
     const newFields = fields.map(field => {
         if (field.name === "📌 Status") {
             return {
                 name: "📌 Status",
-                value: `🔴 Closed by ${interaction.user.tag}`
+                value: `🔴 Closed by **${staffName}**`
             };
         }
 
