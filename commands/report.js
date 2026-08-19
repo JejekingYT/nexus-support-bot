@@ -2,8 +2,7 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    EmbedBuilder,
-    ComponentType
+    EmbedBuilder
 } = require("discord.js");
 
 const REPORT_CHANNEL_ID = "1539597296486850610";
@@ -26,52 +25,83 @@ async function showReport(message) {
     });
 }
 
-async function startReport(interaction) {
-    await interaction.deferReply({
-        ephemeral: true
-    });
+async function askQuestion(dm, userId, question) {
+    await dm.send(question);
 
     try {
-        await interaction.user.send(
-            "🚨 **Sanctuary Report System**\n\n" +
-            "You are starting a report. Please answer the questions honestly."
+        const collected = await dm.awaitMessages({
+            filter: (msg) => {
+                return msg.author.id === userId && !msg.author.bot;
+            },
+            max: 1,
+            time: 300000,
+            errors: ["time"]
+        });
+
+        return collected.first();
+    } catch {
+        await dm.send(
+            "⌛ Your report timed out because no answer was received."
         );
 
-        await interaction.editReply(
-            "📩 Check your DMs! The report questions have been sent to you."
-        );
+        return null;
+    }
+}
+
+async function startReport(interaction) {
+    try {
+        await interaction.reply({
+            content: "📩 Check your DMs! The report questions have been sent to you.",
+            ephemeral: true
+        });
 
         const dm = await interaction.user.createDM();
 
-        const questions = [
-            "👤 **Who are you reporting?**\nPlease provide their username.",
-            "📝 **What happened?**\nPlease explain the situation.",
-            "📅 **When did this happen?**",
-            "📸 **Do you have any evidence?**\nSend links, screenshots, or type `No evidence`."
-        ];
+        await dm.send(
+            "🚨 **Sanctuary Report System**\n\n" +
+            "Please answer the following questions honestly.\n" +
+            "You have **5 minutes** to answer each question."
+        );
 
-        const answers = [];
+        const reportedUser = await askQuestion(
+            dm,
+            interaction.user.id,
+            "👤 **Question 1/4:** Who are you reporting?\nPlease provide their username."
+        );
 
-        for (const question of questions) {
-            await dm.send(question);
+        if (!reportedUser) return;
 
-            const collected = await dm.awaitMessages({
-                filter: (msg) =>
-                    msg.author.id === interaction.user.id,
-                max: 1,
-                time: 300000,
-                errors: ["time"]
-            });
+        const whatHappened = await askQuestion(
+            dm,
+            interaction.user.id,
+            "📝 **Question 2/4:** What happened?\nPlease explain the situation."
+        );
 
-            answers.push(collected.first().content);
-        }
+        if (!whatHappened) return;
 
-        const reportChannel =
-            await interaction.client.channels.fetch(REPORT_CHANNEL_ID);
+        const when = await askQuestion(
+            dm,
+            interaction.user.id,
+            "📅 **Question 3/4:** When did this happen?"
+        );
 
-        if (!reportChannel) {
+        if (!when) return;
+
+        const evidence = await askQuestion(
+            dm,
+            interaction.user.id,
+            "📸 **Question 4/4:** Do you have any evidence?\nYou can send links or screenshots, or type `No evidence`."
+        );
+
+        if (!evidence) return;
+
+        const reportChannel = await interaction.client.channels.fetch(
+            REPORT_CHANNEL_ID
+        );
+
+        if (!reportChannel || !reportChannel.isTextBased()) {
             return dm.send(
-                "❌ The report system could not find the reports channel."
+                "❌ The reports channel could not be found."
             );
         }
 
@@ -84,19 +114,19 @@ async function startReport(interaction) {
                 },
                 {
                     name: "Reported Member",
-                    value: answers[0]
+                    value: reportedUser.content
                 },
                 {
                     name: "What Happened",
-                    value: answers[1]
+                    value: whatHappened.content
                 },
                 {
                     name: "When",
-                    value: answers[2]
+                    value: when.content
                 },
                 {
                     name: "Evidence",
-                    value: answers[3]
+                    value: evidence.content
                 }
             )
             .setTimestamp();
@@ -107,16 +137,18 @@ async function startReport(interaction) {
 
         await dm.send(
             "✅ **Your report has been submitted successfully.**\n\n" +
-            "The Nexus staff team will review it."
+            "The staff team will review it."
         );
 
     } catch (error) {
         console.error("Report error:", error);
 
         try {
-            await interaction.editReply(
-                "❌ I couldn't start the report. Please make sure your DMs are open."
-            );
+            await interaction.followUp({
+                content:
+                    "❌ Something went wrong. Please make sure your DMs are open.",
+                ephemeral: true
+            });
         } catch {}
     }
 }
