@@ -220,8 +220,9 @@ async function registerCommands() {
         );
 
         await rest.put(
-            Routes.applicationCommands(
-                client.user.id
+            Routes.applicationGuildCommands(
+                client.user.id,
+                process.env.DISCORD_GUILD_ID
             ),
             {
                 body: commands
