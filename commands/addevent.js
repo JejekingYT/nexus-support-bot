@@ -1,11 +1,28 @@
-const { PermissionFlagsBits } = require("discord.js");
+const {
+    PermissionFlagsBits,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle
+} = require("discord.js");
+
 const { pool } = require("../database");
+
+// =========================
+// EVENT CHANNEL
+// =========================
+
+// EVENT CHANNEL ID
+
+const EVENT_CHANNEL_ID =
+    "1492240817191129200";
 
 // =========================
 // GET EVENTS
 // =========================
 
 async function getEvents() {
+
     try {
 
         const [rows] = await pool.query(`
@@ -57,12 +74,17 @@ async function getNextEventId() {
             return "EVENT-001";
         }
 
-        const lastId = String(rows[0].id);
+        const lastId =
+            String(rows[0].id);
 
-        const number = parseInt(
-            lastId.replace("EVENT-", ""),
-            10
-        );
+        const number =
+            parseInt(
+                lastId.replace(
+                    "EVENT-",
+                    ""
+                ),
+                10
+            );
 
         if (isNaN(number)) {
             return "EVENT-001";
@@ -112,19 +134,29 @@ async function addEvent(interaction) {
         // =========================
 
         const eventName =
-            interaction.options.getString("name");
+            interaction.options.getString(
+                "name"
+            );
 
         const eventDate =
-            interaction.options.getString("date");
+            interaction.options.getString(
+                "date"
+            );
 
         const eventTime =
-            interaction.options.getString("time");
+            interaction.options.getString(
+                "time"
+            );
 
         const eventLocation =
-            interaction.options.getString("location");
+            interaction.options.getString(
+                "location"
+            );
 
         const eventDescription =
-            interaction.options.getString("description");
+            interaction.options.getString(
+                "description"
+            );
 
         // =========================
         // CREATE EVENT ID
@@ -164,18 +196,129 @@ async function addEvent(interaction) {
         );
 
         // =========================
-        // SUCCESS
+        // GET EVENT CHANNEL
+        // =========================
+
+        const eventChannel =
+            await interaction.client.channels.fetch(
+                EVENT_CHANNEL_ID
+            );
+
+        if (
+            !eventChannel ||
+            !eventChannel.isTextBased()
+        ) {
+            throw new Error(
+                "Event channel could not be found."
+            );
+        }
+
+        // =========================
+        // EVENT EMBED
+        // =========================
+
+        const eventEmbed =
+            new EmbedBuilder()
+                .setTitle(
+                    `🎉 ${eventName}`
+                )
+                .setDescription(
+                    eventDescription
+                )
+                .addFields(
+                    {
+                        name: "📅 Date",
+                        value: eventDate,
+                        inline: true
+                    },
+                    {
+                        name: "🕐 Time",
+                        value: eventTime,
+                        inline: true
+                    },
+                    {
+                        name: "📍 Location",
+                        value: eventLocation,
+                        inline: true
+                    },
+                    {
+                        name: "👥 Participants",
+                        value: "0 members joined",
+                        inline: false
+                    }
+                )
+                .setFooter({
+                    text:
+                        `Event ID: ${eventId} • The Sanctuary made by Nexus`
+                })
+                .setTimestamp();
+
+        // =========================
+        // EVENT BUTTONS
+        // =========================
+
+        const buttons =
+            new ActionRowBuilder()
+                .addComponents(
+
+                    new ButtonBuilder()
+                        .setCustomId(
+                            `join_event:${eventId}`
+                        )
+                        .setLabel(
+                            "Join Event"
+                        )
+                        .setEmoji("🟢")
+                        .setStyle(
+                            ButtonStyle.Success
+                        ),
+
+                    new ButtonBuilder()
+                        .setCustomId(
+                            `leave_event:${eventId}`
+                        )
+                        .setLabel(
+                            "Leave Event"
+                        )
+                        .setEmoji("🔴")
+                        .setStyle(
+                            ButtonStyle.Danger
+                        ),
+
+                    new ButtonBuilder()
+                        .setCustomId(
+                            `participants_event:${eventId}`
+                        )
+                        .setLabel(
+                            "Participants"
+                        )
+                        .setEmoji("👥")
+                        .setStyle(
+                            ButtonStyle.Primary
+                        )
+                );
+
+        // =========================
+        // SEND ANNOUNCEMENT
+        // =========================
+
+        await eventChannel.send({
+            embeds: [eventEmbed],
+            components: [buttons]
+        });
+
+        // =========================
+        // SUCCESS RESPONSE
         // =========================
 
         await interaction.reply({
             content:
-                "✅ **Event created successfully!**\n\n" +
+                "✅ **Event created and announced successfully!**\n\n" +
                 `🆔 **${eventId}**\n` +
                 `🎉 **${eventName}**\n` +
                 `📅 ${eventDate}\n` +
                 `🕐 ${eventTime}\n` +
-                `📍 ${eventLocation}\n` +
-                `📝 ${eventDescription}`,
+                `📍 ${eventLocation}`,
             ephemeral: true
         });
 

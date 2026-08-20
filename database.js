@@ -14,11 +14,18 @@ const pool = mysql.createPool({
 
 async function initializeDatabase() {
     try {
-        const connection = await pool.getConnection();
 
-        console.log("✅ Connected to MySQL database.");
+        const connection =
+            await pool.getConnection();
 
-        // Create events table
+        console.log(
+            "✅ Connected to MySQL database."
+        );
+
+        // =========================
+        // EVENTS TABLE
+        // =========================
+
         await connection.query(`
             CREATE TABLE IF NOT EXISTS events (
                 id VARCHAR(50) PRIMARY KEY,
@@ -32,7 +39,33 @@ async function initializeDatabase() {
             )
         `);
 
-        // Create reports table
+        // =========================
+        // EVENT PARTICIPANTS TABLE
+        // =========================
+
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS event_participants (
+                eventId VARCHAR(50) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                joinedAt DATETIME NOT NULL,
+
+                PRIMARY KEY (
+                    eventId,
+                    userId
+                ),
+
+                FOREIGN KEY (
+                    eventId
+                )
+                REFERENCES events(id)
+                ON DELETE CASCADE
+            )
+        `);
+
+        // =========================
+        // REPORTS TABLE
+        // =========================
+
         await connection.query(`
             CREATE TABLE IF NOT EXISTS reports (
                 id VARCHAR(50) PRIMARY KEY,
@@ -50,8 +83,17 @@ async function initializeDatabase() {
 
         connection.release();
 
-        console.log("✅ Events table is ready.");
-        console.log("✅ Reports table is ready.");
+        console.log(
+            "✅ Events table is ready."
+        );
+
+        console.log(
+            "✅ Event participants table is ready."
+        );
+
+        console.log(
+            "✅ Reports table is ready."
+        );
 
     } catch (error) {
 

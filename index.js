@@ -47,6 +47,12 @@ const {
     initializeDatabase
 } = require("./database");
 
+const {
+    joinEvent,
+    leaveEvent,
+    viewParticipants
+} = require("./commands/eventparticipants");
+
 // =========================
 // ENVIRONMENT VARIABLES
 // =========================
@@ -549,6 +555,55 @@ client.on(
 
         if (!interaction.isButton()) {
             return;
+        }
+
+        // =========================
+        // EVENT BUTTONS
+        // =========================
+
+        if (
+            interaction.customId.startsWith(
+                "join_event:"
+            )
+        ) {
+
+            const eventId =
+                interaction.customId.split(":")[1];
+
+            return joinEvent(
+                interaction,
+                eventId
+            );
+        }
+
+        if (
+            interaction.customId.startsWith(
+                "leave_event:"
+            )
+        ) {
+
+            const eventId =
+                interaction.customId.split(":")[1];
+
+            return leaveEvent(
+                interaction,
+                eventId
+            );
+        }
+
+        if (
+            interaction.customId.startsWith(
+                "participants_event:"
+            )
+        ) {
+
+            const eventId =
+                interaction.customId.split(":")[1];
+
+            return viewParticipants(
+                interaction,
+                eventId
+            );
         }
 
         // Claim report
